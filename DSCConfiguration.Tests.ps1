@@ -8,11 +8,13 @@
     2017.
 #>
 
+# Configure the common variables that are used in the tests
 $projectModuleName = $env:ProjectName -join 'Module'
 $configurationManifestData = Import-PowerShellDataFile -Path "$env:BuildFolder\$ProjectModuleName\$ProjectModuleName.psd1"
+$resourceGroup = "TestAutomation$env:BuildID"
+$automationAccount = "AADSC$env:BuildID"
 
 Describe 'Common Tests - PS Script Analyzer' -Tag Lint {
-
     $requiredPssaRuleNames = @(
         'PSAvoidDefaultValueForMandatoryParameter',
         'PSAvoidDefaultValueSwitchParameter',
@@ -381,9 +383,6 @@ Describe 'Common Tests - Configuration Module Requirements' -Tag Unit {
 <#
 #>
 Describe 'Common Tests - Azure Automation DSC' -Tag AADSCIntegration {
-    $ResourceGroup = "TestAutomation$env:BuildID"
-    $AutomationAccount = "AADSC$env:BuildID"
-
     $CurrentModuleManifest = Get-ChildItem -Path $env:BuildFolder\$ProjectModuleName -Filter "$ProjectModuleName.psd1" | ForEach-Object {$_.FullName}
     $RequiredModules = Get-RequiredGalleryModules (Import-PowerShellDataFile $CurrentModuleManifest)
 
@@ -420,40 +419,36 @@ Describe 'Common Tests - Azure Automation DSC' -Tag AADSCIntegration {
 <#
 #>
 Describe 'Common Tests - Azure VM' -Tag AzureVMIntegration {
-    $ResourceGroup = "TestAutomation$env:BuildID"
-    $AutomationAccount = "AADSC$env:BuildID"
-
     . $env:BuildFolder\$env:ProjectName.ps1
 
-    $ConfigurationCommands = (Get-Command -Type Configuration |
-        Where-Object { [String]::IsNullOrEmpty($_.Source) }).Name
+    $configurationCommands = (Get-Command -Type Configuration |
+        Where-Object {
+            [String]::IsNullOrEmpty($_.Source)
+        }).Name
 
     $osVersion = $configurationManifestData.PrivateData.PSData.WindowsOSVersion
-    $configurationCount = ($ConfigurationCommands.Count * $OSVersion.Count)
+    $configurationCount = ($configurationCommands.Count * $OSVersion.Count)
 
-    Write-Verbose -Verbose -Message ($OSVersion | Out-String)
+    Write-Verbose -Verbose -Message ($osVersion | Out-String)
 
-    $Nodes = Get-AzureRMAutomationDSCNode -ResourceGroupName $ResourceGroup -AutomationAccountName $AutomationAccount
+    $configuredNodes = Get-AzureRMAutomationDSCNode -ResourceGroupName $ResourceGroup -AutomationAccountName $AutomationAccount
 
-    Write-Verbose -Verbose -Message ($Names | fl * | Out-String)
-
-    $NodeNames = $Nodes.Name
-    Write-Verbose -Verbose -Message ($NodeNames | Out-String)
+    Write-Verbose -Verbose -Message ($configuredNodes | fl * | Out-String)
 
     Context 'AADSC Nodes' {
         It 'Should be more than one node' {
-            $NodeNames.Count | Should BeGreaterThan 0
+            $configuredNodes.Count | Should BeGreaterThan 0
         }
 
-        It "Should have $($NodeNames.Count) nodes to match $configurationCount configurations" {
-            $NodeNames.Count | Should Be $configurationCount
+        It "Should have $($configuredNodes.Count) nodes to match $configurationCount configurations" {
+            $configuredNodes.Count | Should Be $configurationCount
         }
 
-        foreach ($Node in $Nodes) {
-            Context "Node $($Node.Name)" {
-                It "Should be compliant with $($Node.NodeConfigurationName)" {
-                    Write-Verbose -Verbose -Message ($Node | fl * | Out-String)
-                    $Node.Status | Should Be 'Compliant'
+        foreach ($configuredNode in $configuredNodes) {
+            Context "Node $($configuredNode.Name)" {
+                It "Should be compliant with $($configuredNode.NodeConfigurationName)" {
+                    Write-Verbose -Verbose -Message ($configuredNode | fl * | Out-String)
+                    $configuredNode.Status | Should Be 'Compliant'
                 }
             }
         }
