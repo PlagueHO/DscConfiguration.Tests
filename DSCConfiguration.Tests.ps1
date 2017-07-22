@@ -433,6 +433,9 @@ Describe 'Common Tests - Azure VM' -Tag AzureVMIntegration {
     Write-Verbose -Verbose -Message ($OSVersion | Out-String)
 
     $Nodes = Get-AzureRMAutomationDSCNode -ResourceGroupName $ResourceGroup -AutomationAccountName $AutomationAccount
+
+    Write-Verbose -Verbose -Message ($Names | fl * | Out-String)
+
     $NodeNames = $Nodes.Name
     Write-Verbose -Verbose -Message ($NodeNames | Out-String)
 
