@@ -261,7 +261,7 @@ function New-ResourceGroupandAutomationAccount
         Write-Output "Registering 'Microsoft.Automation' resource provider"
 
             # Ensure the Microsoft.Automation resource provider is registered
-        Register-AzureRmResourceProvider -ProviderNamespace 'Microsoft.Automation'
+        $ResourceProvider = Register-AzureRmResourceProvider -ProviderNamespace 'Microsoft.Automation'
 
         # Create Resource Group
         $ResourceGroup = New-AzureRmResourceGroup -Name $ResourceGroupName -Location $Location `
@@ -509,8 +509,10 @@ function New-AzureTestVM
         -Force
 
         # Random password for local administrative account
-        $adminPassword = new-randompassword -length 24 -UseSpecialCharacters | `
-        ConvertTo-SecureString -AsPlainText -Force
+        $adminPasswordString = New-RandomPassword -length 24 -UseSpecialCharacters
+        $adminPassword = ConvertTo-SecureString -String $adminPasswordString -AsPlainText -Force
+
+        Write-Host "VM Administrator password set to $adminPasswordString"
 
         # DNS name based on random chars followed by first 10 of configuration name
         $dnsLabelPrefix = "test$(Get-Random -Minimum 1000 -Maximum 9999)"
