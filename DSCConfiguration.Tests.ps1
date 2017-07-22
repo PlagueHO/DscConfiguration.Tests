@@ -429,11 +429,7 @@ Describe 'Common Tests - Azure VM' -Tag AzureVMIntegration {
     $osVersion = $configurationManifestData.PrivateData.PSData.WindowsOSVersion
     $configurationCount = ($configurationCommands.Count * $OSVersion.Count)
 
-    Write-Verbose -Verbose -Message ($osVersion | Out-String)
-
     $configuredNodes = Get-AzureRMAutomationDSCNode -ResourceGroupName $ResourceGroup -AutomationAccountName $AutomationAccount
-
-    Write-Verbose -Verbose -Message ($configuredNodes | fl * | Out-String)
 
     Context 'AADSC Nodes' {
         It 'Should be more than one node' {
@@ -447,7 +443,6 @@ Describe 'Common Tests - Azure VM' -Tag AzureVMIntegration {
         foreach ($configuredNode in $configuredNodes) {
             Context "Node $($configuredNode.Name)" {
                 It "Should be compliant with $($configuredNode.NodeConfigurationName)" {
-                    Write-Verbose -Verbose -Message ($configuredNode | fl * | Out-String)
                     $configuredNode.Status | Should Be 'Compliant'
                 }
             }
