@@ -422,21 +422,32 @@ Describe 'Common Tests - Azure VM' -Tag AzureVMIntegration {
     $AutomationAccount = "AADSC$env:BuildID"
 
     . $env:BuildFolder\$env:ProjectName.ps1
-    $ConfigurationCommands = Get-Command -Type Configuration | Where-Object {$_.Source -eq ''} | ForEach-Object {$_.Name}
+
+    $ConfigurationCommands = (Get-Command -Type Configuration |
+        Where-Object { [String]::IsNullOrEmpty($_.Source) }).Name
 
     $ProjectModuleName = -join ($env:ProjectName,'Module')
     $OSVersion = (Import-PowerShellDataFile $env:BuildFolder\$ProjectModuleName\$ProjectModuleName.psd1).PrivateData.PSData.WindowsOSVersion
+    $configurationCount = ($ConfigurationCommands.Count * $OSVersion.Count)
+
+    Write-Verbose -Verbose -Message ($OSVersion | Out-String)
 
     $Nodes = Get-AzureRMAutomationDSCNode -ResourceGroupName $ResourceGroup -AutomationAccountName $AutomationAccount
-    $NodeNames = $Nodes | ForEach-Object {$_.Name}
+    $NodeNames = $Nodes.Name
+    Write-Verbose -Verbose -Message ($NodeNames | Out-String)
 
     Context "AADSC Nodes" {
-        It "There are as many nodes as configurations" {
+        It "There should be more than one node" {
             $NodeNames.Count | Should BeGreaterThan 0
-            $NodeNames.Count -eq ($ConfigurationCommands.Count * $OSVersion.Count) | Should Be True
         }
+
+        It "There are as many nodes ($NodeNames.Count) as configurations ($configurationCount)" {
+            $NodeNames.Count | Should Be $configurationCount
+        }
+
         foreach ($Node in $Nodes) {
             It "Node $($Node.Name) is compliant with $($Node.NodeConfigurationName)" {
+                Write-Verbose -Verbose -Message -Out
                 $Node.Status | Should Be 'Compliant'
             }
         }
