@@ -7,6 +7,10 @@
     along with the first test (which is replaced by the following 3) around Jan-Feb
     2017.
 #>
+
+$projectModuleName = $env:ProjectName -join 'Module'
+$configurationManifestData = Import-PowerShellDataFile -Path "$env:BuildFolder\$ProjectModuleName\$ProjectModuleName.psd1"
+
 Describe 'Common Tests - PS Script Analyzer' -Tag Lint {
 
     $requiredPssaRuleNames = @(
@@ -275,53 +279,54 @@ Describe 'Common Tests - File Formatting' -Tag Lint {
 <#
 #>
 Describe 'Common Tests - Configuration Module Requirements' -Tag Unit {
-    $ProjectModuleName = -join ($env:ProjectName,'Module')
-    $Files = Get-ChildItem -Path $env:BuildFolder\$ProjectModuleName
-    $Manifest = Import-PowerShellDataFile -Path "$env:BuildFolder\$ProjectModuleName\$ProjectModuleName.psd1"
+    $projectFiles = Get-ChildItem -Path $env:BuildFolder\$ProjectModuleName
 
     Context "$ProjectModuleName module manifest properties" {
         It 'Contains a module manifest that aligns to the folder and module names' {
-            $Files.Name.Contains("$ProjectModuleName.psd1") | Should Be True
+            $projectFiles.Name.Contains("$ProjectModuleName.psd1") | Should Be True
         }
         It 'Contains a readme' {
-            $Files.Name.Contains("README.md") | Should Be True
+            $projectFiles.Name.Contains("README.md") | Should Be True
         }
         It "Manifest $ProjectModuleName.psd1 should import as a data file" {
-            $Manifest | Should BeOfType 'Hashtable'
+            $configurationManifestData | Should BeOfType 'Hashtable'
         }
         It 'Should have a GUID in the manifest' {
-            $Manifest.GUID | Should Match '[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}'
+            $configurationManifestData.GUID | Should Match '[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}'
         }
         It 'Should list requirements in the manifest' {
-            $Manifest.RequiredModules | Should Not Be Null
+            $configurationManifestData.RequiredModules | Should Not Be Null
         }
         It 'Should list a module version in the manifest' {
-            $Manifest.ModuleVersion | Should BeGreaterThan 0.0.0.0
+            $configurationManifestData.ModuleVersion | Should BeGreaterThan 0.0.0.0
         }
         It 'Should list an author in the manifest' {
-            $Manifest.Author | Should Not Be Null
+            $configurationManifestData.Author | Should Not Be Null
         }
         It 'Should provide a description in the manifest' {
-            $Manifest.Description | Should Not Be Null
+            $configurationManifestData.Description | Should Not Be Null
         }
         It 'Should require PowerShell version 4 or later in the manifest' {
-            $Manifest.PowerShellVersion | Should BeGreaterThan 4.0
+            $configurationManifestData.PowerShellVersion | Should BeGreaterThan 4.0
         }
         It 'Should require CLR version 4 or later in the manifest' {
-            $Manifest.CLRVersion | Should BeGreaterThan 4.0
+            $configurationManifestData.CLRVersion | Should BeGreaterThan 4.0
         }
         It 'Should export functions in the manifest' {
-            $Manifest.FunctionsToExport | Should Not Be Null
+            $configurationManifestData.FunctionsToExport | Should Not Be Null
         }
         It 'Should include tags in the manifest' {
-            $Manifest.PrivateData.PSData.Tags | Should Not Be Null
+            $configurationManifestData.PrivateData.PSData.Tags | Should Not Be Null
         }
         It 'Should include a project URI in the manifest' {
-            $Manifest.PrivateData.PSData.ProjectURI | Should Not Be Null
+            $configurationManifestData.PrivateData.PSData.ProjectURI | Should Not Be Null
+        }
+        It 'Should include a Windows OS Version in the manifest' {
+            $configurationManifestData.PrivateData.PSData.WindowsOSVersion | Should Not Be Null
         }
     }
     Context "$ProjectModuleName required modules" {
-        ForEach ($RequiredModule in $Manifest.RequiredModules[0]) {
+        ForEach ($RequiredModule in $configurationManifestData.RequiredModules[0]) {
             if ($RequiredModule.GetType().Name -eq 'Hashtable') {
                 It "$($RequiredModule.ModuleName) version $($RequiredModule.ModuleVersion) should be found in the PowerShell public gallery" {
                     {Find-Module -Name $RequiredModule.ModuleName -RequiredVersion $RequiredModule.ModuleVersion} | Should Not Be Null
@@ -376,7 +381,6 @@ Describe 'Common Tests - Configuration Module Requirements' -Tag Unit {
 <#
 #>
 Describe 'Common Tests - Azure Automation DSC' -Tag AADSCIntegration {
-
     $ResourceGroup = "TestAutomation$env:BuildID"
     $AutomationAccount = "AADSC$env:BuildID"
 
@@ -427,7 +431,7 @@ Describe 'Common Tests - Azure VM' -Tag AzureVMIntegration {
         Where-Object { [String]::IsNullOrEmpty($_.Source) }).Name
 
     $ProjectModuleName = -join ($env:ProjectName,'Module')
-    $OSVersion = (Import-PowerShellDataFile $env:BuildFolder\$ProjectModuleName\$ProjectModuleName.psd1).PrivateData.PSData.WindowsOSVersion
+    $OSVersion = $configurationManifestData.PrivateData.PSData.WindowsOSVersion
     $configurationCount = ($ConfigurationCommands.Count * $OSVersion.Count)
 
     Write-Verbose -Verbose -Message ($OSVersion | Out-String)
@@ -444,7 +448,7 @@ Describe 'Common Tests - Azure VM' -Tag AzureVMIntegration {
             $NodeNames.Count | Should BeGreaterThan 0
         }
 
-        It "There are as many nodes ($NodeNames.Count) as configurations ($configurationCount)" {
+        It "There are as many nodes $($NodeNames.Count) as configurations ($configurationCount)" {
             $NodeNames.Count | Should Be $configurationCount
         }
 
