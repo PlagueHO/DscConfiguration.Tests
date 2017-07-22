@@ -384,7 +384,6 @@ Describe 'Common Tests - Azure Automation DSC' -Tag AADSCIntegration {
     $ResourceGroup = "TestAutomation$env:BuildID"
     $AutomationAccount = "AADSC$env:BuildID"
 
-    $ProjectModuleName = $env:ProjectName+'Module'
     $CurrentModuleManifest = Get-ChildItem -Path $env:BuildFolder\$ProjectModuleName -Filter "$ProjectModuleName.psd1" | ForEach-Object {$_.FullName}
     $RequiredModules = Get-RequiredGalleryModules (Import-PowerShellDataFile $CurrentModuleManifest)
 
@@ -421,7 +420,6 @@ Describe 'Common Tests - Azure Automation DSC' -Tag AADSCIntegration {
 <#
 #>
 Describe 'Common Tests - Azure VM' -Tag AzureVMIntegration {
-
     $ResourceGroup = "TestAutomation$env:BuildID"
     $AutomationAccount = "AADSC$env:BuildID"
 
@@ -430,8 +428,7 @@ Describe 'Common Tests - Azure VM' -Tag AzureVMIntegration {
     $ConfigurationCommands = (Get-Command -Type Configuration |
         Where-Object { [String]::IsNullOrEmpty($_.Source) }).Name
 
-    $ProjectModuleName = -join ($env:ProjectName,'Module')
-    $OSVersion = $configurationManifestData.PrivateData.PSData.WindowsOSVersion
+    $osVersion = $configurationManifestData.PrivateData.PSData.WindowsOSVersion
     $configurationCount = ($ConfigurationCommands.Count * $OSVersion.Count)
 
     Write-Verbose -Verbose -Message ($OSVersion | Out-String)
@@ -443,20 +440,22 @@ Describe 'Common Tests - Azure VM' -Tag AzureVMIntegration {
     $NodeNames = $Nodes.Name
     Write-Verbose -Verbose -Message ($NodeNames | Out-String)
 
-    Context "AADSC Nodes" {
-        It "There should be more than one node" {
+    Context 'AADSC Nodes' {
+        It 'Should be more than one node' {
             $NodeNames.Count | Should BeGreaterThan 0
         }
 
-        It "There are as many nodes $($NodeNames.Count) as configurations ($configurationCount)" {
+        It "Should have $($NodeNames.Count) nodes to match $configurationCount configurations" {
             $NodeNames.Count | Should Be $configurationCount
         }
 
         foreach ($Node in $Nodes) {
-            It "Node $($Node.Name) is compliant with $($Node.NodeConfigurationName)" {
-                Write-Verbose -Verbose -Message -Out
-                $Node.Status | Should Be 'Compliant'
+            Context "Node $($Node.Name)" {
+                It "Should be compliant with $($Node.NodeConfigurationName)" {
+                    Write-Verbose -Verbose -Message ($Node | fl * | Out-String)
+                    $Node.Status | Should Be 'Compliant'
+                }
             }
         }
     }
-}    
+}
