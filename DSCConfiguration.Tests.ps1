@@ -9,7 +9,7 @@
 #>
 
 # Configure the common variables that are used in the tests
-$projectModuleName = $env:ProjectName -join 'Module'
+$projectModuleName = -join ($env:ProjectName,'Module')
 $configurationManifestData = Import-PowerShellDataFile -Path "$env:BuildFolder\$ProjectModuleName\$ProjectModuleName.psd1"
 $resourceGroup = "TestAutomation$env:BuildID"
 $automationAccount = "AADSC$env:BuildID"
